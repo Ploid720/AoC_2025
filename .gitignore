@@ -1,0 +1,13 @@
+benchmark/
+
+*/debug/
+*/target/
+*/input/
+*/.git/
+*/.gitignore
+
+*/Cargo.lock
+
+**/*.rs.bk
+
+*/*.pdb
