@@ -84,16 +84,9 @@ pub fn solve_part_2(input: &String) -> usize
             let max_len = max.len();
             let nums: HashSet<_> = (1..=(max_len / 2))
                 .flat_map(|pat_len| (2..=(max_len / pat_len)).map(move |rep_len| (pat_len, rep_len)))
-                .flat_map(|(pat_len, rep_len)| {
-                    let mut res = HashSet::new();
-                    for i in 1..(10_i64.pow(pat_len as u32)) {
-                        let n = repeat_num(i, rep_len);
-                        if (n >= min_num) && (n <= max_num) {
-                            res.insert(n);
-                        }
-                    }
-                    return res.into_iter();
-                })
+                .flat_map(|(pat_len, rep_len)| (1..(10_i64.pow(pat_len as u32)))
+                    .map(move |i| repeat_num(i, rep_len))
+                    .filter(|n| (*n >= min_num) && (*n <= max_num)))
                 .collect();
 
             return nums.into_iter()
