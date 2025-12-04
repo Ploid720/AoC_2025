@@ -3,6 +3,7 @@
 */input/
 */.git/
 */.gitignore
+*_vis
 
 */Cargo.lock
 
