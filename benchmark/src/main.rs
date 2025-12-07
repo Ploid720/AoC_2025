@@ -16,7 +16,8 @@ fn main() {
         day!("Day 03", "day3", &day3::solve_part_1, &day3::solve_part_2),
         day!("Day 04", "day4", &day4::solve_part_1, &day4::solve_part_2),
         day!("Day 05", "day5", &day5::solve_part_1, &day5::solve_part_2),
-        day!("Day 06", "day6", &day6::solve_part_1, &day6::solve_part_2)
+        day!("Day 06", "day6", &day6::solve_part_1, &day6::solve_part_2),
+        day!("Day 07", "day7", &day7::solve_part_1, &day7::solve_part_2)
     ];
 	
     let run_count = 5;
