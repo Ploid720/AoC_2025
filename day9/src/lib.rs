@@ -10,11 +10,12 @@ pub fn solve_part_1(input: &String) -> u64
         })
         .collect();
 
-    return points.iter()
-        .flat_map(|p1| points.iter()
-            .map(move |p2| (p1, p2)))
+    return (0..points.len())
+        .flat_map(|i1| ((i1 + 1)..points.len())
+            .map(move |i2| (i1, i2)))
+        .map(|(i1, i2)| (points[i1], points[i2]))
         .map(|((x1, y1), (x2, y2))| 
-            ((x2 - x1 + 1).abs() as u64) * ((y2 - y1 + 1).abs() as u64))
+            (((x2 - x1).abs() + 1) as u64) * (((y2 - y1).abs() + 1) as u64))
         .max()
         .unwrap_or(0);
 }
@@ -120,11 +121,12 @@ pub fn solve_part_2(input: &String) -> u64
 
     let mut max_area: Option<u64> = None;
 
-    'a: for (p1, p2) in points.iter()
-        .flat_map(|p1| points.iter()
-            .map(move |p2| (p1, p2)))
+    'a: for (p1, p2) in (0..points.len())
+        .flat_map(|i1| ((i1 + 1)..points.len())
+            .map(move |i2| (i1, i2)))
+        .map(|(i1, i2)| (points[i1], points[i2]))
     {
-        let ((x1, y1), (x2, y2)) = (*p1, *p2);
+        let ((x1, y1), (x2, y2)) = (p1, p2);
         let sx = x1.min(x2);
         let sy = y1.min(y2);
         let ex = x1.max(x2);
@@ -135,7 +137,7 @@ pub fn solve_part_2(input: &String) -> u64
             && (oex < osx || oex > sx)
             && (oey < osy || oey > sy) {continue 'a}
         }
-        let area = ((ex - sx + 1) as u64) * ((ey - sy + 1) as u64);
+        let area = (((ex - sx) as u64) + 1) * (((ey - sy) as u64) + 1);
         max_area = match max_area {
             Some(a) => Some(a.max(area)),
             None => Some(area)
