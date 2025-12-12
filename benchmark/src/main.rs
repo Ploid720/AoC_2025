@@ -21,7 +21,8 @@ fn main() {
         day!("Day 08", "day8", &day8::solve_part_1, &day8::solve_part_2),
         day!("Day 09", "day9", &day9::solve_part_1, &day9::solve_part_2),
         day!("Day 10", "day10", &day10::solve_part_1, &day10::solve_part_2),
-        day!("Day 11", "day11", &day11::solve_part_1, &day11::solve_part_2)
+        day!("Day 11", "day11", &day11::solve_part_1, &day11::solve_part_2),
+        day!("Day 12", "day12", &day12::solve)
     ];
 	
     let run_count = 5;
@@ -29,7 +30,7 @@ fn main() {
     let days: Vec<_> = days.into_iter()
         .flat_map(|part| match part {
             Parts::One(task, path, p) => 
-                vec!((task, "part 1", path, p)),
+                vec!((task, "", path, p)),
             Parts::Two(task, path, p1, p2) =>
                 vec!((task, "part 1", path, p1), (task, "part 2", path, p2))
         })
