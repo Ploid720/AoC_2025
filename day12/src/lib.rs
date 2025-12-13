@@ -154,12 +154,13 @@ pub fn solve(input: &String) -> u64
 
         return present;
     }
+
     fn presents_fit(w: i64, h: i64,
-        presents: &Vec<(Vec<(Vec<(i64, i64)>, Vec<(i64, i64)>)>, i64)>,
+        presents: &Vec<(&Vec<(Vec<(i64, i64)>, i64, i64, Vec<(i64, i64)>)>, usize)>,
         grid: &HashSet<(i64, i64)>,
         cache: &mut HashSet<Vec<(i64, i64)>>) -> bool
     {
-        let mut cached_grid: Vec<_> = grid.iter().copied().collect();
+        let mut cached_grid = grid.iter().copied().collect::<Vec<_>>();
         cached_grid.sort_by(|(x1, y1), (x2, y2)| x1.cmp(x2).then(y1.cmp(y2)));
         if cache.contains(&cached_grid) {
             return false;
@@ -169,45 +170,76 @@ pub fn solve(input: &String) -> u64
         if cache.len() > 1000000 {
             cache.clear();
         }
-        
-        let mut presents = presents.clone();
-        let (present_lut, margin) = match presents.pop() {
-            Some(present) => present,
-            None => {return true}
-        };
 
-        'a: for (x_off, y_off, present, outline) in ((-margin)..(w + margin))
-            .flat_map(|x| ((-margin)..(h + margin)).map(move |y| (x, y)))
-            .flat_map(|(x, y)| present_lut
-                .iter()
-                .map(move |(present, outline)| (x, y, present, outline)))
-        {
-            let present: Vec<_> = present
-                .iter()
-                .copied()
-                .map(|(x, y)| (x + x_off, y + y_off))
+        if presents.iter()
+            .all(|(_, count)| *count == 0) {
+            return true;
+        }
+
+        for i in 0..presents.len() {
+            let (present_lut, count) = presents[i];
+            if count <= 0 {
+                continue;
+            }
+
+            let presents: Vec<_> = presents.iter()
+                .enumerate()
+                .filter_map(|(ind, (lut, count))| {
+                    let mut count = *count;
+                    if ind == i {
+                        count -= 1;
+                        
+                    }
+                    if count <= 0 {
+                        return None;
+                    }
+                    return Some((&**lut, count));
+                })
                 .collect();
-            let mut grid = grid.clone();
-            
-            let grid_was_empty = grid.is_empty();
 
-            for pos in present {
-                if (pos.0 < 0) || (pos.0 >= w)
-                || (pos.1 < 0) || (pos.1 >= h)
-                || grid.contains(&pos) {
+            'a: for (x_off, y_off, present, outline) in present_lut
+                .iter()
+                .flat_map(move |(present, max_x, max_y, outline)| (0..(w - max_x)).map(move |x| (x, max_y, present, outline)))
+                .flat_map(|(x, max_y, present, outline)| (0..(h - max_y)).map(move |y| (x, y, present, outline)))
+            {
+                let present: Vec<_> = present
+                    .iter()
+                    .copied()
+                    .map(|(x, y)| (x + x_off, y + y_off))
+                    .collect();
+                let mut grid = grid.clone();
+                
+                let grid_was_empty = grid.is_empty();
+
+                for pos in present.iter() {
+                    if (pos.0 < 0) || (pos.0 >= w)
+                    || (pos.1 < 0) || (pos.1 >= h)
+                    || grid.contains(&pos) {
+                        continue 'a;
+                    }
+                }
+
+                if !grid_was_empty {
+                    if !outline.iter()
+                        .map(|(x, y)| (x + x_off, y + y_off))
+                        .any(|pos| grid.contains(&pos)) {
+                        continue 'a;
+                    }
+                }
+                else if !outline.iter()
+                    .map(|(x, y)| (x + x_off, y + y_off))
+                    .any(|(x, _)| x < 0)
+                {
                     continue 'a;
                 }
-                grid.insert(pos);
-            }
 
-            if !grid_was_empty && !outline.iter()
-                .map(|(x, y)| (x + x_off, y + y_off))
-                .any(|pos| grid.contains(&pos)) {
-                continue 'a;
-            }
+                for pos in present {
+                    grid.insert(pos);
+                }
 
-            if presents_fit(w, h, &presents, &grid, cache) {
-                return true;
+                if presents_fit(w, h, &presents, &grid, cache) {
+                    return true;
+                }
             }
         }
 
@@ -247,23 +279,55 @@ pub fn solve(input: &String) -> u64
 
         //Never runs on real input but does run on test input
 
-        let presents: Vec<_> = counts
+        let mut presents: Vec<_> = counts
             .into_iter()
             .enumerate()
             .map(|(i, count)| (i as i64, count.max(0) as usize))
-            .flat_map(|(i, count)| {
-                let present = shapes.get(&i).unwrap();
+            .map(|(i, count)| {
+                let base_present = shapes.get(&i).unwrap();
 
                 let present_lut: Vec<_> = (0..4)
                     .flat_map(move |rot| (0..4)
-                        .map(move |flip| rotate_present(flip_present(present.clone(), flip), rot)))
-                    .map(|mut curr_present| {
-                        curr_present.sort_by(|(x1, y1), (x2, y2)| x1.cmp(x2).then(y1.cmp(y2)));
-                        return curr_present;
+                        .map(move |flip| rotate_present(flip_present(base_present.clone(), flip), rot)))
+                    .map(|mut present| {
+                        let (min_x, min_y) = present
+                            .iter()
+                            .fold((None, None), |(min_x, min_y), (x, y)| (
+                                min_x.map(|min_x: i64| min_x.min(*x)).or(Some(*x)),
+                                min_y.map(|min_y: i64| min_y.min(*y)).or(Some(*y))
+                            ));
+
+                        let (min_x, min_y) = (
+                            min_x.unwrap_or(0),
+                            min_y.unwrap_or(0)
+                        );
+                        
+                        for i in 0..present.len() {
+                            let (x, y) = present[i];
+                            present[i] = (x - min_x, y - min_y);
+                        }
+
+                        return present;
+                    })
+                    .map(|mut present| {
+                        present.sort_by(|(x1, y1), (x2, y2)| x1.cmp(x2).then(y1.cmp(y2)));
+                        return present;
                     })
                     .collect::<HashSet<_>>()
                     .into_iter()
                     .map(|present| {
+                        let (max_x, max_y) = present
+                            .iter()
+                            .fold((None, None), |(max_x, max_y), (x, y)| (
+                                max_x.map(|max_x: i64| max_x.max(*x)).or(Some(*x)),
+                                max_y.map(|max_y: i64| max_y.max(*y)).or(Some(*y))
+                            ));
+
+                        let (max_x, max_y) = (
+                            max_x.unwrap_or(0), 
+                            max_y.unwrap_or(0)
+                        );
+
                         let outline: Vec<_> = present
                             .iter()
                             .flat_map(|(x, y)| nbs.iter()
@@ -272,39 +336,22 @@ pub fn solve(input: &String) -> u64
                             .collect::<HashSet<_>>()
                             .into_iter()
                             .collect();
-                        return (present, outline);
+                        return (present, max_x, max_y, outline);
                     })
                     .collect();
 
-                let (min_x, min_y, max_x, max_y) = present_lut
-                    .iter()
-                    .flat_map(|(v, _)| v)
-                    .fold((None, None, None, None), |(min_x, min_y, max_x, max_y), (x, y)| (
-                        min_x.map(|min_x: i64| min_x.min(*x)).or(Some(*x)),
-                        min_y.map(|min_y: i64| min_y.min(*y)).or(Some(*y)),
-                        max_x.map(|max_x: i64| max_x.max(*x)).or(Some(*x)),
-                        max_y.map(|max_y: i64| max_y.max(*y)).or(Some(*y))
-                    ));
-
-                let (min_x, min_y, max_x, max_y) = (
-                    min_x.unwrap_or(0),
-                    min_y.unwrap_or(0),
-                    max_x.unwrap_or(0), 
-                    max_y.unwrap_or(0)
-                );
-
-                let margin = (max_x - min_x).max(max_y - min_y);
-
-                let mut ret = vec!();
-                for _ in 0..count {
-                    ret.push((present_lut.clone(), margin));
-                }
-
-                return ret;
+                return (present_lut, count);
             })
             .collect();
+        
+        presents.sort_by(|(lut1, _), (lut2, _)| lut2.len().cmp(&lut1.len()));
 
-        if presents_fit(w, h, &presents, &HashSet::new(), &mut HashSet::new()) {
+        let presents_by_ref: Vec<_> = presents
+            .iter()
+            .map(|(lut, count)| (lut, *count))
+            .collect();
+
+        if presents_fit(w, h, &presents_by_ref, &HashSet::new(), &mut HashSet::new()) {
             res += 1;
         }
     }
